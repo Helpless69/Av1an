@@ -45,6 +45,12 @@ RUN cargo build --release && \
     mv ./target/release/av1an /usr/local/bin && \
     cd .. && rm -rf ./Av1an
 
+# FFmpeg setup
+RUN curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o ffmpeg.tar.xz && \
+    tar -xvf ffmpeg.tar.xz && \
+    mv -v ffmpeg-master-latest-linux64-gpl/bin/* /usr/local/bin && \
+    chmod a+rx /usr/local/bin/ffmpeg
+
 
 # Stage 5: Runtime image
 FROM base AS runtime
@@ -63,9 +69,3 @@ WORKDIR /videos
 
 ENTRYPOINT [ "/usr/local/bin/av1an" ]
 
-
-# Stage 6: FFmpeg setup
-RUN curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o /usr/local/bin/ffmpeg.tar.xz && \
-    tar -xvf /usr/local/bin/ffmpeg.tar.xz -C /usr/local/bin/ && \
-    mv -v /usr/local/bin/ffmpeg-master-latest-linux64-gpl/bin/* /usr/local/bin && \
-    chmod a+rx /usr/local/bin/ffmpeg
