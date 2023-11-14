@@ -1,26 +1,30 @@
+# Stage 1: Base image with dependencies
 FROM archlinux:base-devel AS base
 
 RUN pacman -Syu --noconfirm
 
-# Install dependancies needed by all steps including runtime step
-RUN pacman -S --noconfirm --needed aom ffmpeg vapoursynth ffms2 libvpx mkvtoolnix-cli svt-av1 vapoursynth-plugin-lsmashsource vmaf
+# Install dependencies needed by all steps including runtime step
+RUN pacman -S --noconfirm --needed aom vapoursynth ffms2 libvpx mkvtoolnix-cli svt-av1 vapoursynth-plugin-lsmashsource vmaf
 
 
+# Stage 2: Build image with additional dependencies
 FROM base AS build-base
 
-# Install dependancies needed by build steps
+# Install dependencies needed by build steps
 RUN pacman -S --noconfirm --needed rust clang nasm git
 
 RUN cargo install cargo-chef
 WORKDIR /tmp/Av1an
 
 
+# Stage 3: Planner stage
 FROM build-base AS planner
 
 COPY . .
 RUN cargo chef prepare
 
 
+# Stage 4: Build stage
 FROM build-base AS build
 
 COPY --from=planner /tmp/Av1an/recipe.json recipe.json
@@ -42,6 +46,7 @@ RUN cargo build --release && \
     cd .. && rm -rf ./Av1an
 
 
+# Stage 5: Runtime image
 FROM base AS runtime
 
 ENV MPLCONFIGDIR="/home/app_user/"
@@ -57,3 +62,10 @@ VOLUME ["/videos"]
 WORKDIR /videos
 
 ENTRYPOINT [ "/usr/local/bin/av1an" ]
+
+
+# Stage 6: FFmpeg setup
+RUN curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o /usr/local/bin/ffmpeg.tar.xz && \
+    tar -xvf /usr/local/bin/ffmpeg.tar.xz -C /usr/local/bin/ && \
+    mv -v /usr/local/bin/ffmpeg-master-latest-linux64-gpl/bin/* /usr/local/bin && \
+    chmod a+rx /usr/local/bin/ffmpeg
